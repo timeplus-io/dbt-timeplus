@@ -1,8 +1,6 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/silentsokolov/dbt-clickhouse/master/etc/dbt-logo-full.svg" alt="dbt logo" width="300"/>
+  <img src="https://raw.githubusercontent.com/timeplus-io/dbt-proton/master/etc/dbt-logo-full.svg" alt="dbt logo" width="300"/>
 </p>
-
-[![build](https://github.com/silentsokolov/dbt-clickhouse/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/silentsokolov/dbt-clickhouse/actions/workflows/build.yml)
 
 # dbt-proton
 
@@ -45,14 +43,14 @@ Run `pytest tests/integration/proton.dbtspec` to run integration tests.
 
 ### Database
 
-The dbt model `database.schema.table` is not compatible with ClickHouse because ClickHouse does not support a `schema`.
-So we use a simple model `schema.table`, where `schema` is the ClickHouse's database. Please, don't use `default` database!
+The dbt model `database.schema.table` is not compatible with Timeplus because Timeplus does not support a `schema`.
+So we use a simple model `schema.table`, where `schema` is the Timeplus' database.
 
 ### Model Configuration
 
 | Option         | Description                                                                                                                                          | Required?                         |
 |----------------|------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------|
-| engine         | The table engine (type of table) to use when creating tables                                                                                         | Optional (default: `MergeTree()`) |
+| engine         | The table engine (type of stream) to use when creating tables                                                                                         | Optional (default: `Stream()`) |
 | order_by     | A tuple of column names or arbitrary expressions. This allows you to create a small sparse index that helps find data faster.                        | Optional (default: `tuple()`)     |
 | partition_by | A partition is a logical combination of records in a table by a specified criterion. The partition key can be any expression from the table columns. | Optional                          |
 

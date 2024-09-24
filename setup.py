@@ -26,14 +26,15 @@ def _dbt_proton_version():
 
 package_name = 'dbt-proton'
 package_version = _dbt_proton_version()
-description = '''The Proton plugin for dbt (data build tool)'''
+description = '''The Timeplus Proton plugin for dbt (data build tool)'''
 
-dbt_version = '1.6.5'
+dbt_version = '1.8.0'
+dbt_minor = '.'.join(dbt_version.split('.')[0:2])
 
 if not package_version.startswith(dbt_version):
     raise ValueError(
         f'Invalid setup.py: package_version={package_version} must start with '
-        f'dbt_version={dbt_version}'
+        f'dbt_version={dbt_minor}'
     )
 
 
@@ -48,7 +49,7 @@ setup(
     author='Jove Zhong',
     author_email='jove@timeplus.com',
     url='https://github.com/timeplus-io/dbt-proton',
-    license='MIT',
+    license='Apache 2.0 License',
 
     packages=find_namespace_packages(include=['dbt', 'dbt.*']),
     package_data={
@@ -60,9 +61,9 @@ setup(
     },
     install_requires=[
         f'dbt-core=={dbt_version}',
-        'proton-driver>=0.2.8',
+        'proton-driver>=0.2.10',
     ],
-    python_requires=">=3.7",
+    python_requires=">=3.10",
     platforms='any',
     classifiers=[
         'Development Status :: 5 - Production/Stable',
@@ -70,10 +71,8 @@ setup(
         'Operating System :: Microsoft :: Windows',
         'Operating System :: MacOS :: MacOS X',
         'Operating System :: POSIX :: Linux',
-        'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3.8',
-        'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
         'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
     ],
 )
