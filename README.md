@@ -24,7 +24,13 @@ pip install dbt-core
 pip install -r dev_requirements.txt
 ```
 Then run `pip install -e .` to install the current dev code.
-Run `pytest tests/unit/test_adapter.py` to run basic tests.
+
+Run `pytest tests/unit` to run basic tests without a running Timeplus instance.
+
+To run functional test, please start a Timeplus Proton or Timeplus Enterprise instance via Docker or binary. [Check the docs](https://docs.timeplus.com/proton-howto) for details.
+
+Run `pytest tests/functional` to run functional tests.
+
 Run `pytest tests/integration/proton.dbtspec` to run integration tests.
 
 ### Supported features

@@ -37,10 +37,6 @@ class ProtonRelation(BaseRelation):
     quote_character: str = ''
     can_exchange: bool = False
 
-    def __post_init__(self):
-        if self.database != self.schema and self.database:
-            raise DbtRuntimeError(f'Cannot set database {self.database} in Proton!')
-
     def render(self):
         if self.include_policy.database and self.include_policy.schema:
             raise DbtRuntimeError(

@@ -28,10 +28,10 @@ package_name = 'dbt-proton'
 package_version = _dbt_proton_version()
 description = '''The Timeplus Proton plugin for dbt (data build tool)'''
 
-dbt_version = '1.8.0'
+dbt_version = '1.8.7'
 dbt_minor = '.'.join(dbt_version.split('.')[0:2])
 
-if not package_version.startswith(dbt_version):
+if not package_version.startswith(dbt_minor):
     raise ValueError(
         f'Invalid setup.py: package_version={package_version} must start with '
         f'dbt_version={dbt_minor}'

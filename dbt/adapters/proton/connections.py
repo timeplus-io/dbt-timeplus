@@ -21,7 +21,7 @@ class ProtonCredentials(Credentials):
     host: str = 'localhost'
     port: Optional[int] = None
     user: Optional[str] = 'default'
-    database: Optional[str] = None
+    database: Optional[str] = 'default'
     schema: Optional[str] = 'default'
     password: str = ''
     cluster: Optional[str] = None
@@ -42,15 +42,9 @@ class ProtonCredentials(Credentials):
         return self.host
 
     def __post_init__(self):
-        if self.database is not None and self.database != self.schema:
-            raise dbt.exceptions.DbtRuntimeError(
-                f'    schema: {self.schema} \n'
-                f'    database: {self.database} \n'
-                f'    cluster: {self.cluster} \n'
-                f'On Proton, database must be omitted or have the same value as'
-                f' schema.'
-            )
-        self.database = None
+        # so far only use default database/schema
+        self.database = 'default'
+        self.schema = 'default'
 
     def _connection_keys(self):
         return ('host', 'port', 'user', 'schema', 'secure', 'verify')
@@ -98,7 +92,7 @@ class ProtonConnectionManager(SQLConnectionManager):
             handle = Client(
                 host=credentials.host,
                 port=credentials.port,
-                database='default',
+                database=credentials.database,
                 user=credentials.user,
                 password=credentials.password,
                 client_name=f'dbt-{dbt_version}',
@@ -137,13 +131,15 @@ class ProtonConnectionManager(SQLConnectionManager):
 
     @classmethod
     def get_table_from_response(cls, response, columns) -> agate.Table:
+        from dbt_common.clients.agate_helper import table_from_data_flat
+
         column_names = [x[0] for x in columns]
 
         data = []
         for row in response:
             data.append(dict(zip(column_names, row)))
 
-        return dbt.clients.agate_helper.table_from_data_flat(data, column_names)
+        return table_from_data_flat(data, column_names)
 
     def execute(
         self, sql: str, auto_begin: bool = False, fetch: bool = False, limit: Optional[int] = None
@@ -175,7 +171,9 @@ class ProtonConnectionManager(SQLConnectionManager):
             if fetch:
                 table = self.get_table_from_response(response, columns)
             else:
-                table = dbt.clients.agate_helper.empty_table()
+                from dbt_common.clients.agate_helper import empty_table
+
+                table = empty_table()
             return status, table
 
     def add_query(
