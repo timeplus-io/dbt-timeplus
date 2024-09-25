@@ -10,9 +10,8 @@ from contextlib import contextmanager
 
 from proton_driver import Client, errors
 
-from dbt.adapters.base import Credentials
+from dbt.adapters.contracts.connection import Connection, Credentials
 from dbt.adapters.sql import SQLConnectionManager
-from dbt.contracts.connection import Connection
 from dbt.logger import GLOBAL_LOGGER as logger
 from dbt.version import __version__ as dbt_version
 
@@ -154,7 +153,7 @@ class ProtonConnectionManager(SQLConnectionManager):
         client = conn.handle
 
         with self.exception_handler(sql):
-            #sys.stdout.write("Jove TEMP LOG "+sql+"\n")    
+            #sys.stdout.write("Jove TEMP LOG "+sql+"\n")
             logger.debug(
                 'On {connection_name}: {sql}',
                 connection_name=conn.name,

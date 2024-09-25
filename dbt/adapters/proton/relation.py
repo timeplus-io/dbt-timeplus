@@ -3,8 +3,9 @@ from typing import Any, Optional, Type
 
 from dbt.adapters.base.relation import BaseRelation, Policy, Self
 from dbt.contracts.graph.nodes import SourceDefinition
+from dbt_common.dataclass_schema import StrEnum
 from dbt.exceptions import DbtRuntimeError
-from dbt.utils import deep_merge
+from dbt_common.utils import deep_merge
 
 
 @dataclass
@@ -20,6 +21,14 @@ class ProtonIncludePolicy(Policy):
     schema: bool = True
     identifier: bool = True
 
+class ProtonRelationType(StrEnum):
+    Table = "table"
+    View = "view"
+    CTE = "cte"
+    MaterializedView = "materialized_view"
+    External = "external"
+    Ephemeral = "ephemeral"
+    Dictionary = "dictionary"
 
 @dataclass(frozen=True, eq=False, repr=False)
 class ProtonRelation(BaseRelation):

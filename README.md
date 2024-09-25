@@ -16,7 +16,7 @@ pip install dbt-proton
 ```
 
 ### Development
-Follow the [dbt Documentation])(https://docs.getdbt.com/docs/core/pip-install) to install dbt with pip.
+Follow the [dbt Documentation](https://docs.getdbt.com/docs/core/pip-install) to install dbt with pip.
 ```shell
 python3.10 -m venv proton-dbt-env
 source proton-dbt-env/bin/activate
