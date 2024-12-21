@@ -88,13 +88,13 @@
 
 {% macro proton__create_schema(relation) -%}
   {%- call statement('create_schema') -%}
-    create database if not exists {{ relation.without_identifier().include(database=False) }} {{ on_cluster_clause(label="on cluster") }}
+    create view {{ relation.without_identifier().include(database=False) }} as select 1 --create database if not exists {{ relation.without_identifier().include(database=False) }} {{ on_cluster_clause(label="on cluster") }}
   {% endcall %}
 {% endmacro %}
 
 {% macro proton__drop_schema(relation) -%}
   {%- call statement('drop_schema') -%}
-    drop database if exists {{ relation.without_identifier().include(database=False) }} {{ on_cluster_clause(label="on cluster") }}
+    drop view {{ relation.without_identifier().include(database=False) }} --drop database if exists {{ relation.without_identifier().include(database=False) }} {{ on_cluster_clause(label="on cluster") }}
   {%- endcall -%}
 {% endmacro %}
 

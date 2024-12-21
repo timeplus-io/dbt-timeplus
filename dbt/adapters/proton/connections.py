@@ -10,9 +10,8 @@ from contextlib import contextmanager
 
 from proton_driver import Client, errors
 
-from dbt.adapters.base import Credentials
+from dbt.adapters.contracts.connection import Connection, Credentials
 from dbt.adapters.sql import SQLConnectionManager
-from dbt.contracts.connection import Connection
 from dbt.logger import GLOBAL_LOGGER as logger
 from dbt.version import __version__ as dbt_version
 
@@ -22,7 +21,7 @@ class ProtonCredentials(Credentials):
     host: str = 'localhost'
     port: Optional[int] = None
     user: Optional[str] = 'default'
-    database: Optional[str] = None
+    database: Optional[str] = 'default'
     schema: Optional[str] = 'default'
     password: str = ''
     cluster: Optional[str] = None
@@ -43,15 +42,9 @@ class ProtonCredentials(Credentials):
         return self.host
 
     def __post_init__(self):
-        if self.database is not None and self.database != self.schema:
-            raise dbt.exceptions.DbtRuntimeError(
-                f'    schema: {self.schema} \n'
-                f'    database: {self.database} \n'
-                f'    cluster: {self.cluster} \n'
-                f'On Proton, database must be omitted or have the same value as'
-                f' schema.'
-            )
-        self.database = None
+        # so far only use default database/schema
+        self.database = 'default'
+        self.schema = 'default'
 
     def _connection_keys(self):
         return ('host', 'port', 'user', 'schema', 'secure', 'verify')
@@ -64,27 +57,11 @@ class ProtonConnectionManager(SQLConnectionManager):
     def exception_handler(self, sql):
         try:
             yield
-
-        except errors.ServerException as e:
-            logger.debug('Proton error: {}', str(e))
-
-            try:
-                # attempt to release the connection
-                self.release()
-            except errors.Error:
-                logger.debug('Failed to release connection!')
-                pass
-
-            raise dbt.exceptions.DbtDatabaseError(str(e).strip()) from e
-
-        except Exception as e:
+        except Exception as exp:
             logger.debug('Error running SQL: {}', sql)
-            logger.debug('Rolling back transaction.')
-            self.release()
-            if isinstance(e, dbt.exceptions.DbtRuntimeError):
+            if isinstance(exp, dbt.exceptions.DbtRuntimeError):
                 raise
-
-            raise dbt.exceptions.DbtRuntimeError(e) from e
+            raise dbt.exceptions.DbtRuntimeError('Timeplus exception:  ' + str(exp)) from exp
 
     @classmethod
     def open(cls, connection):
@@ -99,7 +76,7 @@ class ProtonConnectionManager(SQLConnectionManager):
             handle = Client(
                 host=credentials.host,
                 port=credentials.port,
-                database='default',
+                database=credentials.database,
                 user=credentials.user,
                 password=credentials.password,
                 client_name=f'dbt-{dbt_version}',
@@ -138,13 +115,15 @@ class ProtonConnectionManager(SQLConnectionManager):
 
     @classmethod
     def get_table_from_response(cls, response, columns) -> agate.Table:
+        from dbt_common.clients.agate_helper import table_from_data_flat
+
         column_names = [x[0] for x in columns]
 
         data = []
         for row in response:
             data.append(dict(zip(column_names, row)))
 
-        return dbt.clients.agate_helper.table_from_data_flat(data, column_names)
+        return table_from_data_flat(data, column_names)
 
     def execute(
         self, sql: str, auto_begin: bool = False, fetch: bool = False, limit: Optional[int] = None
@@ -154,7 +133,7 @@ class ProtonConnectionManager(SQLConnectionManager):
         client = conn.handle
 
         with self.exception_handler(sql):
-            #sys.stdout.write("Jove TEMP LOG "+sql+"\n")    
+            #sys.stdout.write("Jove TEMP LOG "+sql+"\n")
             logger.debug(
                 'On {connection_name}: {sql}',
                 connection_name=conn.name,
@@ -176,7 +155,9 @@ class ProtonConnectionManager(SQLConnectionManager):
             if fetch:
                 table = self.get_table_from_response(response, columns)
             else:
-                table = dbt.clients.agate_helper.empty_table()
+                from dbt_common.clients.agate_helper import empty_table
+
+                table = empty_table()
             return status, table
 
     def add_query(
