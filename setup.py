@@ -61,7 +61,7 @@ setup(
     },
     install_requires=[
         f'dbt-core=={dbt_version}',
-        'proton-driver>=0.2.10',
+        'proton-driver>=0.2.13',
     ],
     python_requires=">=3.10",
     platforms='any',

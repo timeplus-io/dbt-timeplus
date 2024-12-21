@@ -57,27 +57,11 @@ class ProtonConnectionManager(SQLConnectionManager):
     def exception_handler(self, sql):
         try:
             yield
-
-        except errors.ServerException as e:
-            logger.debug('Proton error: {}', str(e))
-
-            try:
-                # attempt to release the connection
-                self.release()
-            except errors.Error:
-                logger.debug('Failed to release connection!')
-                pass
-
-            raise dbt.exceptions.DbtDatabaseError(str(e).strip()) from e
-
-        except Exception as e:
+        except Exception as exp:
             logger.debug('Error running SQL: {}', sql)
-            logger.debug('Rolling back transaction.')
-            self.release()
-            if isinstance(e, dbt.exceptions.DbtRuntimeError):
+            if isinstance(exp, dbt.exceptions.DbtRuntimeError):
                 raise
-
-            raise dbt.exceptions.DbtRuntimeError(e) from e
+            raise dbt.exceptions.DbtRuntimeError('Timeplus exception:  ' + str(exp)) from exp
 
     @classmethod
     def open(cls, connection):

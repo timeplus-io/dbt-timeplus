@@ -1,5 +1,5 @@
 dbt-core>=1.8.7
-proton-driver>=0.2.10
+proton-driver>=0.2.13
 pytest
 pytest-dotenv
 dbt-tests-adapter

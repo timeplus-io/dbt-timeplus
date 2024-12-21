@@ -102,6 +102,7 @@ class ProtonAdapter(SQLAdapter):
     ) -> List[ProtonRelation]:
         kwargs = {'schema_relation': schema_relation}
         results = self.execute_macro(LIST_RELATIONS_MACRO_NAME, kwargs=kwargs)
+        conn_supports_exchange = False # TODO
 
         relations = []
         for row in results:
