@@ -2,7 +2,7 @@ default:
   outputs:
 
     dev:
-      type: proton
+      type: timeplus
       schema: [database name]
       host: [host]
 
@@ -11,7 +11,7 @@ default:
       password: [password]
 
     prod:
-      type: proton
+      type: timeplus
       schema: [database name]
       host: [host]
 

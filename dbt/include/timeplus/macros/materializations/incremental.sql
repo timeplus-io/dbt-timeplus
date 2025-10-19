@@ -1,4 +1,4 @@
-{% materialization incremental, adapter='proton' -%}
+{% materialization incremental, adapter='timeplus' -%}
 
   {% set unique_key = config.get('unique_key') %}
 
@@ -62,19 +62,19 @@
       {% do adapter.drop_relation(old_relation) %}
       {% do adapter.rename_relation(target_relation, old_relation) %} 
 
-      {% set create_sql = proton__incremental_create(old_relation, target_relation) %}
+      {% set create_sql = timeplus__incremental_create(old_relation, target_relation) %}
       {% call statement('main') %}
         {{ create_sql }}
       {% endcall %}
 
-      {% set currect_insert_sql = proton__incremental_cur_insert(old_relation, tmp_relation, target_relation, unique_key=unique_key) %}
+      {% set currect_insert_sql = timeplus__incremental_cur_insert(old_relation, tmp_relation, target_relation, unique_key=unique_key) %}
       {% call statement('main') %}
         {{ currect_insert_sql }}
       {% endcall %}
       {% do to_drop.append(old_relation) %}
     {%- endif %}
     
-    {% set build_sql = proton__incremental_insert(tmp_relation, target_relation, unique_key=unique_key) %}
+    {% set build_sql = timeplus__incremental_insert(tmp_relation, target_relation, unique_key=unique_key) %}
     
   {% endif %}
 
@@ -108,11 +108,11 @@
 
 {%- endmaterialization %}
 
-{% macro proton__incremental_create(old_relation, target_relation) %}
+{% macro timeplus__incremental_create(old_relation, target_relation) %}
   create table {{ target_relation }} as {{ old_relation }}
 {%- endmacro %}
 
-{% macro proton__incremental_cur_insert(old_relation, tmp_relation, target_relation, unique_key=none) %}
+{% macro timeplus__incremental_cur_insert(old_relation, tmp_relation, target_relation, unique_key=none) %}
   {%- set dest_columns = adapter.get_columns_in_relation(target_relation) -%}
   {%- set dest_cols_csv = dest_columns | map(attribute='quoted') | join(', ') -%}
 
@@ -125,7 +125,7 @@
   )
 {%- endmacro %}
 
-{% macro proton__incremental_insert(tmp_relation, target_relation, unique_key=none) %}
+{% macro timeplus__incremental_insert(tmp_relation, target_relation, unique_key=none) %}
   {%- set dest_columns = adapter.get_columns_in_relation(target_relation) -%}
   {%- set dest_cols_csv = dest_columns | map(attribute='quoted') | join(', ') -%}
 

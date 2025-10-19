@@ -1,4 +1,4 @@
-from dbt.adapters.proton.impl import ProtonAdapter
+from dbt.adapters.timeplus.impl import ProtonAdapter
 
 
 def test_simple():

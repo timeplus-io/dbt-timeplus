@@ -1,24 +1,18 @@
-{% macro engine_clause(label) %}
+{% macro engine_value() %}
   {%- set engine = config.get('engine', validator=validation.any[basestring]) -%}
-  {%- if engine is not none %}
-    {{ label }} = {{ engine }}
-  {%- else %}
-    {{ label }} = MergeTree()
-  {%- endif %}
+  {%- if engine is not none -%}
+    {{ engine }}
+  {%- endif -%}
 {%- endmacro -%}
 
 {% macro partition_cols(label) %}
   {%- set cols = config.get('partition_by', validator=validation.any[list, basestring]) -%}
   {%- if cols is not none %}
     {%- if cols is string -%}
-      {%- set cols = [cols] -%}
+      {{ label }} {{ cols }}
+    {%- else -%}
+      {{ label }} {{ cols | join(", ") }}
     {%- endif -%}
-    {{ label }} (
-    {%- for item in cols -%}
-      {{ item }}
-      {%- if not loop.last -%},{%- endif -%}
-    {%- endfor -%}
-    )
   {%- endif %}
 {%- endmacro -%}
 
@@ -26,16 +20,12 @@
   {%- set cols = config.get('order_by', validator=validation.any[list, basestring]) -%}
   {%- if cols is not none %}
     {%- if cols is string -%}
-      {%- set cols = [cols] -%}
+      {{ label }} {{ cols }}
+    {%- else -%}
+      {{ label }} {{ cols | join(", ") }}
     {%- endif -%}
-    {{ label }} (
-    {%- for item in cols -%}
-      {{ item }}
-      {%- if not loop.last -%},{%- endif -%}
-    {%- endfor -%}
-    )
   {%- else %}
-    {{ label }} (tuple())
+    {{ label }} id
   {%- endif %}
 {%- endmacro -%}
 
@@ -46,29 +36,47 @@
   {%- endif %}
 {%- endmacro -%}
 
-{% macro proton__create_table_as(temporary, relation, sql) -%}
+{% macro timeplus__create_table_as(temporary, relation, sql) -%}
   {%- set sql_header = config.get('sql_header', none) -%}
 
   {{ sql_header if sql_header is not none }}
 
+  {%- set schema = adapter.get_select_schema(sql) -%}
+  {%- set col_defs = [] -%}
+  {%- for c in schema -%}
+    {%- do col_defs.append(c.name ~ ' ' ~ c.type) -%}
+  {%- endfor -%}
+
   {% if temporary -%}
-    create temporary stream {{ relation.name }}
-    engine = Memory
-    {{ order_cols(label="order by") }}
-    {{ partition_cols(label="partition by") }}
+    {% call statement('create_temp_stream') %}
+      create temporary stream {{ relation.name }} (
+        {{ col_defs | join(',\n        ') }}
+      )
+    {% endcall %}
   {%- else %}
-    create stream {{ relation.include(database=False) }}
-    {{ on_cluster_clause(label="on cluster") }}
-    {{ engine_clause(label="engine") }}
-    {{ order_cols(label="order by") }}
-    {{ partition_cols(label="partition by") }}
+    {% call statement('create_stream') %}
+      create stream {{ relation.include(database=False) }} (
+        {{ col_defs | join(',\n        ') }}
+      )
+      {{ on_cluster_clause(label="on cluster") }}
+      {%- set eng = engine_value() -%}
+      {%- if eng %}
+      engine = {{ eng }}
+      {%- endif %}
+      {{ order_cols(label="order by") }}
+      {{ partition_cols(label="partition by") }}
+    {% endcall %}
   {%- endif %}
-  as (
+
+  {% call statement('insert_into_stream') %}
+    insert into {{ relation.include(database=False) }}
     {{ sql }}
-  )
+  {% endcall %}
+
+  {{ return('select 1') }}
 {%- endmacro %}
 
-{% macro proton__create_view_as(relation, sql) -%}
+{% macro timeplus__create_view_as(relation, sql) -%}
   {%- set sql_header = config.get('sql_header', none) -%}
 
   {{ sql_header if sql_header is not none }}
@@ -79,26 +87,26 @@
   )
 {%- endmacro %}
 
-{% macro proton__list_schemas(database) %}
+{% macro timeplus__list_schemas(database) %}
   {% call statement('list_schemas', fetch_result=True, auto_begin=False) %}
     select name from system.databases
   {% endcall %}
   {{ return(load_result('list_schemas').table) }}
 {% endmacro %}
 
-{% macro proton__create_schema(relation) -%}
+{% macro timeplus__create_schema(relation) -%}
   {%- call statement('create_schema') -%}
     create database if not exists {{ relation.without_identifier().include(database=False) }} {{ on_cluster_clause(label="on cluster") }}
   {% endcall %}
 {% endmacro %}
 
-{% macro proton__drop_schema(relation) -%}
+{% macro timeplus__drop_schema(relation) -%}
   {%- call statement('drop_schema') -%}
-    drop database if exists {{ relation.without_identifier().include(database=False) }} {{ on_cluster_clause(label="on cluster") }}
+    drop database if exists {{ relation.without_identifier().include(database=False) }} cascade {{ on_cluster_clause(label="on cluster") }}
   {%- endcall -%}
 {% endmacro %}
 
-{% macro proton__list_relations_without_caching(schema_relation) %}
+{% macro timeplus__list_relations_without_caching(schema_relation) %}
   {% call statement('list_relations_without_caching', fetch_result=True) -%}
     select
       null as db,
@@ -111,7 +119,7 @@
   {{ return(load_result('list_relations_without_caching').table) }}
 {% endmacro %}
 
-{% macro proton__get_columns_in_relation(relation) -%}
+{% macro timeplus__get_columns_in_relation(relation) -%}
   {% call statement('get_columns_in_relation', fetch_result=True) %}
     select
       name,
@@ -128,13 +136,13 @@
   {% do return(load_result('get_columns_in_relation').table) %}
 {% endmacro %}
 
-{% macro proton__drop_relation(relation) -%}
+{% macro timeplus__drop_relation(relation) -%}
   {% call statement('drop_relation', auto_begin=False) -%}
     drop stream if exists {{ relation }} {{ on_cluster_clause(label="on cluster") }}
   {%- endcall %}
 {% endmacro %}
 
-{% macro proton__rename_relation(from_relation, to_relation) -%}
+{% macro timeplus__rename_relation(from_relation, to_relation) -%}
   {% call statement('drop_relation') %}
     drop stream if exists {{ to_relation }} {{ on_cluster_clause(label="on cluster") }}
   {% endcall %}
@@ -143,13 +151,13 @@
   {% endcall %}
 {% endmacro %}
 
-{% macro proton__truncate_relation(relation) -%}
+{% macro timeplus__truncate_relation(relation) -%}
   {% call statement('truncate_relation') -%}
     truncate stream {{ relation }}
   {%- endcall %}
 {% endmacro %}
 
-{% macro proton__make_temp_relation(base_relation, suffix) %}
+{% macro timeplus__make_temp_relation(base_relation, suffix) %}
   {% set tmp_identifier = base_relation.identifier ~ suffix %}
   {% set tmp_relation = base_relation.incorporate(
                               path={"identifier": tmp_identifier, "schema": None}) -%}
@@ -157,15 +165,15 @@
 {% endmacro %}
 
 
-{% macro proton__generate_database_name(custom_database_name=none, node=none) -%}
+{% macro timeplus__generate_database_name(custom_database_name=none, node=none) -%}
   {% do return(None) %}
 {%- endmacro %}
 
-{% macro proton__current_timestamp() -%}
+{% macro timeplus__current_timestamp() -%}
   now()
 {%- endmacro %}
 
-{% macro proton__get_columns_in_query(select_sql) %}
+{% macro timeplus__get_columns_in_query(select_sql) %}
   {% call statement('get_columns_in_query', fetch_result=True, auto_begin=False) -%}
     select * from (
         {{ select_sql }}
@@ -176,7 +184,7 @@
   {{ return(load_result('get_columns_in_query').table.columns | map(attribute='name') | list) }}
 {% endmacro %}
 
-{% macro proton__alter_column_type(relation, column_name, new_column_type) -%}
+{% macro timeplus__alter_column_type(relation, column_name, new_column_type) -%}
   {% call statement('alter_column_type') %}
     alter stream {{ relation }} {{ on_cluster_clause(label="on cluster") }} modify column {{ adapter.quote(column_name) }} {{ new_column_type }}
   {% endcall %}

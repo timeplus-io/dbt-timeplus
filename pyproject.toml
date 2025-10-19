@@ -2,23 +2,18 @@
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
-[project]
-name = "dbt-proton"
-version = "1.6.5"
-description = "Proton dbt adapter"
-authors = [{name="Jove Zhong", email="jove@timeplus.io"}]
-readme = "README.md"
-requires-python = ">=3.10"
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: Apache License",
-    "Operating System :: OS Independent",
-]
-dependencies = [
-  "dbt-core>=1.6.5",
-  "proton-driver>=0.2.8",
-]
+[tool.black]
+line-length = 100
+skip-string-normalization = true
+target-version = ['py310', 'py311', 'py312']
+exclude = '(\.eggs|\.git|\.mypy_cache|\.venv|venv|env|_build|build|build|dist|)'
 
-[project.urls]
-"Homepage" = "https://github.com/timeplus-io/proton"
-"Bug Tracker" = "https://github.com/timeplus-io/proton"
+[tool.isort]
+line_length = 100
+profile = "black"
+use_parentheses = true
+skip = '.eggs/,.mypy_cache/,.venv/,venv/,env/'
+
+[tool.pytest.ini_options]
+log_cli = true
+log_cli_level = "WARNING"
