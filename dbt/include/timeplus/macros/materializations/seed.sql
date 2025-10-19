@@ -1,4 +1,4 @@
-{% macro proton__load_csv_rows(model, agate_table) %}
+{% macro timeplus__load_csv_rows(model, agate_table) %}
   {% set cols_sql = get_seed_column_quoted_csv(model, agate_table.column_names) %}
   {% set data_sql = adapter.get_csv_data(agate_table) %}
 
@@ -10,7 +10,7 @@
   {% do adapter.add_query(sql, bindings=agate_table, abridge_sql_log=True) %}
 {% endmacro %}
 
-{% macro proton__create_csv_table(model, agate_table) %}
+{% macro timeplus__create_csv_table(model, agate_table) %}
   {%- set column_override = model['config'].get('column_types', {}) -%}
   {%- set quote_seed_column = model['config'].get('quote_columns', None) -%}
 

@@ -10,6 +10,8 @@ __pycache__/
 .Python
 env*/
 dbt_env/
+venv/
+.venv/
 build/
 develop-eggs/
 dist/
@@ -43,6 +45,7 @@ htmlcov/
 .coverage
 .coverage.*
 .cache
+.pytest_cache/
 .env
 nosetests.xml
 coverage.xml

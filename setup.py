@@ -14,7 +14,7 @@ with open(os.path.join(this_directory, 'README.md')) as f:
 # get this from a separate file
 def _dbt_proton_version():
     _version_path = os.path.join(
-        this_directory, 'dbt', 'adapters', 'proton', '__version__.py'
+        this_directory, 'dbt', 'adapters', 'timeplus', '__version__.py'
     )
     _version_pattern = r'''version\s*=\s*["'](.+)["']'''
     with open(_version_path) as f:
@@ -24,16 +24,17 @@ def _dbt_proton_version():
         return match.group(1)
 
 
-package_name = 'dbt-proton'
+package_name = 'dbt-timeplus'
 package_version = _dbt_proton_version()
-description = '''The Proton plugin for dbt (data build tool)'''
+description = '''The Timeplus (Proton) plugin for dbt (data build tool)'''
 
-dbt_version = '1.6.5'
+dbt_version = '1.8.7'
+dbt_minor = '.'.join(dbt_version.split('.')[0:2])
 
-if not package_version.startswith(dbt_version):
+if not package_version.startswith(dbt_minor):
     raise ValueError(
         f'Invalid setup.py: package_version={package_version} must start with '
-        f'dbt_version={dbt_version}'
+        f'dbt_version={dbt_minor}'
     )
 
 
@@ -45,24 +46,24 @@ setup(
     long_description=long_description,
     long_description_content_type='text/markdown',
 
-    author='Jove Zhong',
-    author_email='jove@timeplus.com',
-    url='https://github.com/timeplus-io/dbt-proton',
-    license='MIT',
+    author='Timeplus Inc.',
+    author_email='dev@timeplus.com',
+    url='https://github.com/timeplus-io/dbt-timeplus',
+    license='Apache 2.0 License',
 
     packages=find_namespace_packages(include=['dbt', 'dbt.*']),
     package_data={
         'dbt': [
-            'include/proton/dbt_project.yml',
-            'include/proton/macros/*.sql',
-            'include/proton/macros/**/*.sql',
+            'include/timeplus/dbt_project.yml',
+            'include/timeplus/macros/*.sql',
+            'include/timeplus/macros/**/*.sql',
         ]
     },
     install_requires=[
         f'dbt-core=={dbt_version}',
-        'proton-driver>=0.2.8',
+        'proton-driver>=0.2.13',
     ],
-    python_requires=">=3.7",
+    python_requires=">=3.10",
     platforms='any',
     classifiers=[
         'Development Status :: 5 - Production/Stable',
@@ -70,10 +71,8 @@ setup(
         'Operating System :: Microsoft :: Windows',
         'Operating System :: MacOS :: MacOS X',
         'Operating System :: POSIX :: Linux',
-        'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3.8',
-        'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
         'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
     ],
 )

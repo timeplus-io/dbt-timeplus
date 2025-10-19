@@ -1,5 +1,5 @@
-name: dbt_proton
-version: 1.6.5
+name: dbt_timeplus
+version: 1.8.7
 config-version: 2
 
 macro-paths: ["macros"]

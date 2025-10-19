@@ -1,10 +1,8 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/silentsokolov/dbt-clickhouse/master/etc/dbt-logo-full.svg" alt="dbt logo" width="300"/>
+  <img src="https://raw.githubusercontent.com/timeplus-io/dbt-proton/master/etc/dbt-logo-full.svg" alt="dbt logo" width="300"/>
 </p>
 
-[![build](https://github.com/silentsokolov/dbt-clickhouse/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/silentsokolov/dbt-clickhouse/actions/workflows/build.yml)
-
-# dbt-proton
+# dbt-timeplus
 
 This plugin ports [dbt](https://getdbt.com) functionality to [Timeplus Proton](https://github.com/timeplus-io/proton).
 
@@ -14,20 +12,24 @@ This plugin ports [dbt](https://getdbt.com) functionality to [Timeplus Proton](h
 Use your favorite Python package manager to install the app from PyPI, e.g.
 
 ```bash
-pip install dbt-proton
+pip install dbt-timeplus
 ```
 
 ### Development
-Follow the [dbt Documentation])(https://docs.getdbt.com/docs/core/pip-install) to install dbt with pip.
+Follow the [dbt Documentation](https://docs.getdbt.com/docs/core/pip-install) to install dbt with pip.
 ```shell
 python3.10 -m venv proton-dbt-env
 source proton-dbt-env/bin/activate
-pip install dbt-core
+pip install dbt-core==1.8.7
 pip install -r dev_requirements.txt
 ```
 Then run `pip install -e .` to install the current dev code.
-Run `pytest tests/unit/test_adapter.py` to run basic tests.
-Run `pytest tests/integration/proton.dbtspec` to run integration tests.
+Run `pytest tests/unit` to run basic tests without a running Timeplus instance.
+
+To run functional tests, start a Timeplus Proton or Timeplus Enterprise instance via Docker or binary. See docs under `/home/haohang/docs` for setup details.
+
+Run `pytest tests/functional` to run functional tests.
+Run `pytest tests/integration/timeplus.dbtspec` to run integration tests.
 
 ### Supported features
 
@@ -45,14 +47,14 @@ Run `pytest tests/integration/proton.dbtspec` to run integration tests.
 
 ### Database
 
-The dbt model `database.schema.table` is not compatible with ClickHouse because ClickHouse does not support a `schema`.
-So we use a simple model `schema.table`, where `schema` is the ClickHouse's database. Please, don't use `default` database!
+The dbt model `database.schema.table` is not compatible with Timeplus because Timeplus does not support a `schema`.
+So we use a simple model `schema.table`, where `schema` is the Timeplus database.
 
 ### Model Configuration
 
 | Option         | Description                                                                                                                                          | Required?                         |
 |----------------|------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------|
-| engine         | The table engine (type of table) to use when creating tables                                                                                         | Optional (default: `MergeTree()`) |
+| engine         | The table engine (type of stream) to use when creating tables                                                                                         | Optional (default: `Stream()`) |
 | order_by     | A tuple of column names or arbitrary expressions. This allows you to create a small sparse index that helps find data faster.                        | Optional (default: `tuple()`)     |
 | partition_by | A partition is a logical combination of records in a table by a specified criterion. The partition key can be any expression from the table columns. | Optional                          |
 
@@ -63,9 +65,9 @@ your_profile_name:
   target: dev
   outputs:
     dev:
-      type: proton
+      type: timeplus
       schema: [database name] # default default
-      host: [db.url.proton] # default localhost
+      host: [db.url.timeplus] # default localhost
 
       # optional
       port: [port]  # default 8463

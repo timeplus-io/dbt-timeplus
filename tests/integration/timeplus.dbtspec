@@ -1,5 +1,5 @@
 target:
-  type: proton
+  type: timeplus
   host: localhost
   port: 8463
   schema: "test_{{ var('_dbt_random_suffix') }}"

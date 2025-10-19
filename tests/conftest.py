@@ -10,8 +10,10 @@ pytest_plugins = ["dbt.tests.fixtures.project"]
 @pytest.fixture(scope="class")
 def dbt_profile_target():
     return {
-        'type': 'proton',
+        'type': 'timeplus',
         'threads': 1,
-        'host': 'localhost',
-        'port': 8463
+        'host': os.getenv('DBT_TEST_HOST', 'localhost'),
+        'port': int(os.getenv('DBT_TEST_PORT', '8463')),
+        'user': os.getenv('DBT_TEST_USER', 'default'),
+        'password': os.getenv('DBT_TEST_PASSWORD', ''),
     }

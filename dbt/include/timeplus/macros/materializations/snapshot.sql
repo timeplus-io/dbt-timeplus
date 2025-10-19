@@ -1,16 +1,16 @@
-{% macro proton__snapshot_hash_arguments(args) -%}
+{% macro timeplus__snapshot_hash_arguments(args) -%}
   halfMD5({%- for arg in args -%}
     coalesce(cast({{ arg }} as varchar ), '')
     {% if not loop.last %} || '|' || {% endif %}
   {%- endfor -%})
 {%- endmacro %}
 
-{% macro proton__snapshot_string_as_time(timestamp) -%}
+{% macro timeplus__snapshot_string_as_time(timestamp) -%}
   {%- set result = "to_datetime('" ~ timestamp ~ "')" -%}
   {{ return(result) }}
 {%- endmacro %}
 
-{% materialization snapshot, adapter='proton' %}
+{% materialization snapshot, adapter='timeplus' %}
   {%- set config = model['config'] -%}
 
   {%- set target_table = model.get('alias', model.get('name')) -%}
@@ -78,7 +78,7 @@
 
     {% set upsert_relation = target_relation ~ '__snapshot_upsert' %}
 
-    {% do proton__snapshot_merge_sql_one(
+    {% do timeplus__snapshot_merge_sql_one(
           target = target_relation,
           source = staging_table,
           insert_cols = quoted_source_columns,
@@ -164,7 +164,7 @@
     )
 {%- endmacro %}
 
-{% macro proton__snapshot_merge_sql_one(target, source, insert_cols, upsert) -%}
+{% macro timeplus__snapshot_merge_sql_one(target, source, insert_cols, upsert) -%}
   {%- set insert_cols_csv = insert_cols | join(', ') -%}
 
   {% call statement('create_upsert_relation') %}
@@ -198,4 +198,5 @@
   {% call statement('rename_upsert_relation') %}
     rename stream {{ upsert }} to {{ target }};
   {% endcall %}
-{% endmacro %}
+
+{%- endmacro %}

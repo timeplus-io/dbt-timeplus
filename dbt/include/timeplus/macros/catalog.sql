@@ -1,4 +1,4 @@
-{% macro proton__get_catalog(information_schema, schemas) -%}
+{% macro timeplus__get_catalog(information_schema, schemas) -%}
   {%- call statement('catalog', fetch_result=True) -%}
     select
       null as table_database,

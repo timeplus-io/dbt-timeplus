@@ -1,4 +1,4 @@
-{% macro proton__test_relationships(model, column_name, to, field) %}
+{% macro timeplus__test_relationships(model, column_name, to, field) %}
 
 with child as (
     select {{ column_name }} as from_field

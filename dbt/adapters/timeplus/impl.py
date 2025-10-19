@@ -1,25 +1,20 @@
-from typing import Optional, List, Union, Set, Callable
+from typing import Optional, List, Union, Set, Callable, Iterable, FrozenSet, Tuple
 
 import io
 import csv
 import agate
 import dbt.exceptions
 from dataclasses import dataclass
-from concurrent.futures import Future
 
-from dbt.contracts.relation import RelationType
-from dbt.contracts.graph.manifest import Manifest
-from dbt.clients.agate_helper import table_from_rows
 from dbt.adapters.base.relation import InformationSchema
-from dbt.adapters.base.impl import catch_as_completed
 from dbt.adapters.base import AdapterConfig, available
 from dbt.adapters.sql import SQLAdapter
-from dbt.adapters.proton import (
+from dbt.adapters.contracts.relation import Path, RelationConfig
+from dbt.adapters.timeplus import (
     ProtonConnectionManager,
     ProtonRelation,
     ProtonColumn,
 )
-from dbt.utils import executor
 
 
 GET_CATALOG_MACRO_NAME = 'get_catalog'
@@ -95,13 +90,13 @@ class ProtonAdapter(SQLAdapter):
         for row in results:
             if len(row) != 4:
                 raise dbt.exceptions.DbtRuntimeError(
-                    f'Invalid value from \'show table extended ...\', '
-                    f'got {len(row)} values, expected 4'
+                    f"Invalid value from 'list_relations_without_caching', got {len(row)} values, expected 4"
                 )
             _database, name, schema, type_info = row
-            rel_type = RelationType.View if 'view' in type_info else RelationType.Table
+            # dbt v1.8 moved RelationType; keep simple string handling for compatibility
+            rel_type = 'view' if 'view' in type_info else 'table'
             relation = self.Relation.create(
-                database=None,
+                database='',
                 schema=schema,
                 identifier=name,
                 type=rel_type,
@@ -131,36 +126,26 @@ class ProtonAdapter(SQLAdapter):
 
         return self.parse_proton_columns(relation, rows)
 
-    def get_catalog(self, manifest):
-        schema_map = self._get_catalog_schemas(manifest)
-        if len(schema_map) > 1:
-            dbt.exceptions.raise_compiler_error(
-                f'Expected only one database in get_catalog, found '
-                f'{list(schema_map)}'
-            )
+    def get_catalog(
+        self,
+        relation_configs: Iterable[RelationConfig],
+        used_schemas: FrozenSet[Tuple[str, str]],
+    ) -> Tuple["agate.Table", List[Exception]]:
+        from dbt_common.clients.agate_helper import empty_table
 
-        with executor(self.config) as tpe:
-            futures: List[Future[agate.Table]] = []
-            for info, schemas in schema_map.items():
-                for schema in schemas:
-                    futures.append(
-                        tpe.submit_connected(
-                            self,
-                            schema,
-                            self._get_one_catalog,
-                            info,
-                            [schema],
-                            manifest,
-                        )
-                    )
-            catalogs, exceptions = catch_as_completed(futures)
-        return catalogs, exceptions
+        relations = self._get_catalog_relations(relation_configs)
+        schemas = set(relation.schema for relation in relations)
+        if schemas:
+            catalog = self._get_one_catalog(InformationSchema(Path()), schemas, used_schemas)
+        else:
+            catalog = empty_table()
+        return catalog, []
 
     def _get_one_catalog(
         self,
         information_schema: InformationSchema,
         schemas: Set[str],
-        manifest: Manifest,
+        used_schemas: FrozenSet[Tuple[str, str]],
     ) -> agate.Table:
         if len(schemas) != 1:
             dbt.exceptions.raise_compiler_error(
@@ -168,18 +153,9 @@ class ProtonAdapter(SQLAdapter):
                 f'{schemas}'
             )
 
-        return super()._get_one_catalog(information_schema, schemas, manifest)
+        return super()._get_one_catalog(information_schema, schemas, used_schemas)
 
-    @classmethod
-    def _catalog_filter_table(
-        cls, table: agate.Table, manifest: Manifest
-    ) -> agate.Table:
-        table = table_from_rows(
-            table.rows,
-            table.column_names,
-            text_only_columns=['table_schema', 'table_name'],
-        )
-        return table.where(_catalog_filter_schemas(manifest))
+    # _catalog_filter_table no longer needed with new dbt-core API
 
     def get_rows_different_sql(
         self,
@@ -241,6 +217,17 @@ class ProtonAdapter(SQLAdapter):
 
         return buf.getvalue()
 
+    @available.parse(lambda schema: schema)
+    def get_select_schema(self, sql: str):
+        conn = self.connections.get_thread_connection()
+        client = conn.handle
+        # Wrap as subquery to avoid issues and fetch zero rows
+        _response, columns = client.execute(
+            f"select * from ( {sql} ) limit 0", with_column_types=True
+        )
+        # columns is a list of (name, type)
+        return [{"name": c[0], "type": c[1]} for c in columns]
+
 
 def _expect_row_value(key: str, row: agate.Row):
     if key not in row.keys():
@@ -251,7 +238,7 @@ def _expect_row_value(key: str, row: agate.Row):
     return row[key]
 
 
-def _catalog_filter_schemas(manifest: Manifest) -> Callable[[agate.Row], bool]:
+def _catalog_filter_schemas(manifest) -> Callable[[agate.Row], bool]:
     schemas = frozenset((None, s.lower()) for d, s in manifest.get_used_schemas())
 
     def test(row: agate.Row) -> bool:

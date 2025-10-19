@@ -1,6 +1,6 @@
 
 fixed:
-  type: proton
+  type: timeplus
 prompts:
   host:
     hint: 'hostname for the instance'
