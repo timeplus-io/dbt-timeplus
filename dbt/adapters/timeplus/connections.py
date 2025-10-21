@@ -12,8 +12,9 @@ from proton_driver import Client, errors
 
 from dbt.adapters.contracts.connection import Connection, Credentials
 from dbt.adapters.sql import SQLConnectionManager
-from dbt.logger import GLOBAL_LOGGER as logger
+import logging
 from dbt.version import __version__ as dbt_version
+logger = logging.getLogger("dbt.adapters.timeplus")
 
 
 @dataclass
@@ -59,7 +60,7 @@ class ProtonConnectionManager(SQLConnectionManager):
             yield
 
         except Exception as exp:
-            logger.debug('Error running SQL: {}', sql)
+            logger.debug('Error running SQL: %s', sql)
             if isinstance(exp, dbt.exceptions.DbtRuntimeError):
                 raise
             raise dbt.exceptions.DbtRuntimeError('Timeplus exception:  ' + str(exp)) from exp
@@ -93,7 +94,7 @@ class ProtonConnectionManager(SQLConnectionManager):
             connection.handle = handle
             connection.state = 'open'
         except Exception as e:
-            logger.debug('Got an error when attempting to open a Timeplus connection: {}', str(e))
+            logger.debug('Got an error when attempting to open a Timeplus connection: %s', str(e))
             connection.handle = None
             connection.state = 'fail'
             raise dbt.exceptions.FailedToConnectException(str(e))
@@ -103,11 +104,11 @@ class ProtonConnectionManager(SQLConnectionManager):
     def cancel(self, connection):
         connection_name = connection.name
 
-        logger.debug('Cancelling query \'{}\'', connection_name)
+        logger.debug("Cancelling query '%s'", connection_name)
 
         connection.handle.disconnect()
 
-        logger.debug('Cancel query \'{}\'', connection_name)
+        logger.debug("Cancel query '%s'", connection_name)
 
     @classmethod
     def get_table_from_response(cls, response, columns) -> agate.Table:
@@ -130,11 +131,7 @@ class ProtonConnectionManager(SQLConnectionManager):
 
         with self.exception_handler(sql):
             #sys.stdout.write("Jove TEMP LOG "+sql+"\n")
-            logger.debug(
-                'On {connection_name}: {sql}',
-                connection_name=conn.name,
-                sql=f'{sql}...',
-            )
+            logger.debug("On %s: %s", conn.name, f"{sql}...")
 
             pre = time.time()
 
@@ -142,11 +139,7 @@ class ProtonConnectionManager(SQLConnectionManager):
 
             status = self.get_status(client)
 
-            logger.debug(
-                'SQL status: {status} in {elapsed:0.2f} seconds',
-                status=status,
-                elapsed=(time.time() - pre),
-            )
+            logger.debug('SQL status: %s in %.2f seconds', status, (time.time() - pre))
 
             if fetch:
                 table = self.get_table_from_response(response, columns)
@@ -168,22 +161,14 @@ class ProtonConnectionManager(SQLConnectionManager):
         client = conn.handle
 
         with self.exception_handler(sql):
-            logger.debug(
-                'On {connection_name}: {sql}',
-                connection_name=conn.name,
-                sql=f'{sql}...',
-            )
+            logger.debug("On %s: %s", conn.name, f"{sql}...")
 
             pre = time.time()
             client.execute(sql)
 
             status = self.get_status(client)
 
-            logger.debug(
-                'SQL status: {status} in {elapsed:0.2f} seconds',
-                status=status,
-                elapsed=(time.time() - pre),
-            )
+            logger.debug('SQL status: %s in %.2f seconds', status, (time.time() - pre))
 
     @classmethod
     def get_credentials(cls, credentials):

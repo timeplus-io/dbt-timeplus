@@ -55,7 +55,7 @@
     {% endcall %}
   {%- else %}
     {% call statement('create_stream') %}
-      create stream {{ relation.include(database=False) }} (
+      create stream if not exists {{ relation.include(database=False) }} (
         {{ col_defs | join(',\n        ') }}
       )
       {{ on_cluster_clause(label="on cluster") }}
@@ -95,15 +95,21 @@
 {% endmacro %}
 
 {% macro timeplus__create_schema(relation) -%}
-  {%- call statement('create_schema') -%}
-    create database if not exists {{ relation.without_identifier().include(database=False) }} {{ on_cluster_clause(label="on cluster") }}
-  {% endcall %}
+  {#- Avoid unnecessary errors if using built-in 'default' database -#}
+  {%- if relation.schema and relation.schema | lower != 'default' -%}
+    {%- call statement('create_schema') -%}
+      create database if not exists {{ relation.without_identifier().include(database=False) }} {{ on_cluster_clause(label="on cluster") }}
+    {% endcall %}
+  {%- endif -%}
 {% endmacro %}
 
 {% macro timeplus__drop_schema(relation) -%}
-  {%- call statement('drop_schema') -%}
-    drop database if exists {{ relation.without_identifier().include(database=False) }} cascade {{ on_cluster_clause(label="on cluster") }}
-  {%- endcall -%}
+  {#- Never drop the built-in 'default' database from tests -#}
+  {%- if relation.schema and relation.schema | lower != 'default' -%}
+    {%- call statement('drop_schema') -%}
+      drop database if exists {{ relation.without_identifier().include(database=False) }} cascade {{ on_cluster_clause(label="on cluster") }}
+    {%- endcall -%}
+  {%- endif -%}
 {% endmacro %}
 
 {% macro timeplus__list_relations_without_caching(schema_relation) %}

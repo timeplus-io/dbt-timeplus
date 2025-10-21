@@ -1,5 +1,5 @@
 name: dbt_timeplus
-version: 1.8.7
+version: 1.10.0
 config-version: 2
 
 macro-paths: ["macros"]

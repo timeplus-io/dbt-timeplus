@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/timeplus-io/dbt-proton/master/etc/dbt-logo-full.svg" alt="dbt logo" width="300"/>
+  <img src="etc/dbt-logo-full.svg" alt="dbt logo" width="300"/>
 </p>
 
 # dbt-timeplus
@@ -20,7 +20,7 @@ Follow the [dbt Documentation](https://docs.getdbt.com/docs/core/pip-install) to
 ```shell
 python3.10 -m venv proton-dbt-env
 source proton-dbt-env/bin/activate
-pip install dbt-core==1.8.7
+# Installs matching versions for local dev/tests
 pip install -r dev_requirements.txt
 ```
 Then run `pip install -e .` to install the current dev code.
@@ -30,6 +30,25 @@ To run functional tests, start a Timeplus Proton or Timeplus Enterprise instance
 
 Run `pytest tests/functional` to run functional tests.
 Run `pytest tests/integration/timeplus.dbtspec` to run integration tests.
+
+#### External sinks (Kafka / ClickHouse)
+- If you use the provided compose at `/home/haohang/kafka-timeplus-clickhouse/docker-compose.yml`, export required env vars first (examples below), then run `pytest -k external` to execute only those tests.
+```shell
+# ClickHouse
+export CH_ADDRESS=clickhouse:9440
+export CH_DATABASE=default
+export CH_TABLE=ch_sink_table
+export CH_USER=default
+export CH_PASSWORD=
+export CH_SECURE=false
+export CH_CA_CERT=
+
+# Kafka
+export KAFKA_BROKERS=broker:9092
+export KAFKA_TOPIC=test_topic
+```
+
+Tip: copy `tests/test.env.sample` to `tests/test.env` and edit for local runs (pytest-dotenv loads it automatically).
 
 ### Supported features
 

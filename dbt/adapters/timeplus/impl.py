@@ -36,6 +36,11 @@ class ProtonAdapter(SQLAdapter):
     AdapterSpecificConfigs = ProtonConfig
 
     @classmethod
+    def type(cls):
+        # Ensure adapter type resolves to 'timeplus' for dbt-core >= 1.10
+        return 'timeplus'
+
+    @classmethod
     def date_function(cls):
         return 'now()'
 

@@ -28,7 +28,7 @@ package_name = 'dbt-timeplus'
 package_version = _dbt_proton_version()
 description = '''The Timeplus (Proton) plugin for dbt (data build tool)'''
 
-dbt_version = '1.8.7'
+dbt_version = '1.10.13'
 dbt_minor = '.'.join(dbt_version.split('.')[0:2])
 
 if not package_version.startswith(dbt_minor):
@@ -75,4 +75,9 @@ setup(
         'Programming Language :: Python :: 3.11',
         'Programming Language :: Python :: 3.12',
     ],
+    entry_points={
+        'dbt.adapters': [
+            'timeplus = dbt.adapters.timeplus:Plugin',
+        ],
+    },
 )
