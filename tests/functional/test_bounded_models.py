@@ -22,12 +22,18 @@ id,name
     @pytest.fixture(scope="class")
     def models(self):
         table_sql = (
-            "{{ config(materialized='table') }}\n"
-            "select * from table({{ ref('base') }})\n"
+            """
+            {{ config(materialized='table',
+                      pre_hook=["drop stream if exists " ~ target.schema ~ ".table_bounded"]) }}
+            select * from table({{ ref('base') }})
+            """.lstrip()
         )
         inc_sql = (
-            "{{ config(materialized='incremental', unique_key='id') }}\n"
-            "select * from table({{ ref('base') }})\n"
+            """
+            {{ config(materialized='incremental', unique_key='id',
+                      pre_hook=["drop stream if exists " ~ target.schema ~ ".inc_bounded"]) }}
+            select * from table({{ ref('base') }})
+            """.lstrip()
         )
         return {
             "table_bounded.sql": table_sql,

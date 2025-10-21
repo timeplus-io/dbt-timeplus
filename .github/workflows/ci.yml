@@ -1,0 +1,122 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  unit:
+    name: Unit (py${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r dev_requirements.txt
+          pip install -e .
+      - name: Run unit tests
+        run: |
+          pytest -q tests/unit
+
+  functional:
+    name: Functional (gated)
+    runs-on: ubuntu-latest
+    needs: unit
+    env:
+      DBT_TEST_HOST: ${{ vars.DBT_TEST_HOST || 'localhost' }}
+      DBT_TEST_PORT: ${{ vars.DBT_TEST_PORT || '8463' }}
+      DBT_TEST_USER: ${{ vars.DBT_TEST_USER || 'default' }}
+      DBT_TEST_PASSWORD: ${{ secrets.DBT_TEST_PASSWORD || '' }}
+      DBT_TEST_SCHEMA: ${{ vars.DBT_TEST_SCHEMA || 'default' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r dev_requirements.txt
+          pip install -e .
+      - name: Check Timeplus endpoint availability
+        id: probe
+        shell: bash
+        run: |
+          python - <<'PY'
+import os, socket, sys
+host = os.environ.get('DBT_TEST_HOST', 'localhost')
+port = int(os.environ.get('DBT_TEST_PORT', '8463'))
+s = socket.socket()
+s.settimeout(2.0)
+ok = s.connect_ex((host, port)) == 0
+print(f"probe: {host}:{port} => {'up' if ok else 'down'}")
+with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
+    fh.write(f"available={'true' if ok else 'false'}\n")
+PY
+      - name: Run functional tests (deterministic subset)
+        if: steps.probe.outputs.available == 'true'
+        run: |
+          pytest -q \
+            tests/functional/test_materialized_view.py \
+            tests/functional/test_materialized_view_multi.py
+      - name: Skip note
+        if: steps.probe.outputs.available != 'true'
+        run: echo "Timeplus not reachable; skipping functional/integration tests."
+
+  external:
+    name: External Sinks (optional)
+    runs-on: ubuntu-latest
+    needs: unit
+    env:
+      CH_ADDRESS: ${{ vars.CH_ADDRESS }}
+      CH_DATABASE: ${{ vars.CH_DATABASE || 'default' }}
+      CH_TABLE: ${{ vars.CH_TABLE || 'ch_sink_table' }}
+      CH_USER: ${{ vars.CH_USER || 'default' }}
+      CH_PASSWORD: ${{ secrets.CH_PASSWORD || '' }}
+      CH_SECURE: ${{ vars.CH_SECURE || 'false' }}
+      CH_CA_CERT: ${{ secrets.CH_CA_CERT || '' }}
+      KAFKA_BROKERS: ${{ vars.KAFKA_BROKERS }}
+      KAFKA_TOPIC: ${{ vars.KAFKA_TOPIC }}
+      DBT_TEST_HOST: ${{ vars.DBT_TEST_HOST || 'localhost' }}
+      DBT_TEST_PORT: ${{ vars.DBT_TEST_PORT || '8463' }}
+      DBT_TEST_USER: ${{ vars.DBT_TEST_USER || 'default' }}
+      DBT_TEST_PASSWORD: ${{ secrets.DBT_TEST_PASSWORD || '' }}
+      DBT_TEST_SCHEMA: ${{ vars.DBT_TEST_SCHEMA || 'default' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r dev_requirements.txt
+          pip install -e .
+      - name: Probe Timeplus
+        id: probe_tp
+        run: |
+          python - <<'PY'
+import os, socket
+h=os.environ.get('DBT_TEST_HOST','localhost'); p=int(os.environ.get('DBT_TEST_PORT','8463'))
+s=socket.socket(); s.settimeout(2.0); ok = s.connect_ex((h,p)) == 0
+print(f"probe: {h}:{p} => {'up' if ok else 'down'}")
+open(os.environ['GITHUB_OUTPUT'],'a').write(f"available={'true' if ok else 'false'}\n")
+PY
+      - name: Run ClickHouse external test
+        if: steps.probe_tp.outputs.available == 'true' && env.CH_ADDRESS != ''
+        run: pytest -q tests/functional/test_external_clickhouse.py
+      - name: Run Kafka external test
+        if: steps.probe_tp.outputs.available == 'true' && env.KAFKA_BROKERS != '' && env.KAFKA_TOPIC != ''
+        run: pytest -q tests/functional/test_external_kafka.py
+      - name: Skip note
+        if: steps.probe_tp.outputs.available != 'true'
+        run: echo "Timeplus not reachable; skipping external sink tests."

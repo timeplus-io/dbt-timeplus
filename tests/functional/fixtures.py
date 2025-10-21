@@ -9,7 +9,24 @@ id,name,some_date
 
 # models/my_model.sql
 my_model_sql = """
-select window_end,cid,count() as cnt from tumble(car_live_data,1s) group by window_end, cid
+{{ config(
+  pre_hook=[
+    "create random stream if not exists " ~ target.schema ~ ".car_live_data (\n"
+    ~ "  cid string,\n"
+    ~ "  gas_percent float64,\n"
+    ~ "  in_use bool,\n"
+    ~ "  latitude float64,\n"
+    ~ "  locked bool,\n"
+    ~ "  longitude float64,\n"
+    ~ "  speed_kmh float64,\n"
+    ~ "  time string,\n"
+    ~ "  total_km float64\n"
+    ~ ")"
+  ]
+) }}
+select window_end, cid, count() as cnt
+from tumble(table(car_live_data), 1s)
+group by window_end, cid
 """
 
 # models/my_model.yml

@@ -22,6 +22,7 @@ class TestExternalKafkaSink:
             f"{{{{ config(materialized='materialized_view',\n"
             f"           into='ext_kafka',\n"
             f"           pre_hook=[\n"
+            f"             \"drop view if exists mv_kafka\",\n"
             f"             \"drop stream if exists ext_kafka\",\n"
             f"             \"create external stream ext_kafka (i int, s string) settings type='kafka', brokers='{KAFKA_BROKERS}', topic='{KAFKA_TOPIC}', data_format='JSONEachRow'\",\n"
             f"             \"create random stream if not exists rd(i int, s string)\"\n"
@@ -35,4 +36,3 @@ class TestExternalKafkaSink:
     def test_create_mv_to_kafka(self, project):
         results = run_dbt(["run", "-s", "mv_kafka"])
         assert len(results) == 1
-

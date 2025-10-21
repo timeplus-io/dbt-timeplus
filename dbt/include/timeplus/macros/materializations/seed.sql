@@ -25,6 +25,11 @@
     )
   {% endset %}
 
+  {# Ensure idempotency: drop any existing stream before creating #}
+  {% call statement('drop_seed_if_exists') -%}
+    drop stream if exists {{ this.render() }}
+  {%- endcall %}
+
   {% call statement('_') -%}
     {{ sql }}
   {%- endcall %}
