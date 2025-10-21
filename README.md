@@ -24,31 +24,34 @@ source proton-dbt-env/bin/activate
 pip install -r dev_requirements.txt
 ```
 Then run `pip install -e .` to install the current dev code.
-Run `pytest tests/unit` to run basic tests without a running Timeplus instance.
 
-To run functional tests, start a Timeplus Proton or Timeplus Enterprise instance via Docker or binary. See docs under `/home/haohang/docs` for setup details.
-
-Run `pytest tests/functional` to run functional tests.
-Run `pytest tests/integration/timeplus.dbtspec` to run integration tests.
+Testing:
+- `pytest tests/unit` runs fast unit tests (no DB needed).
+- Functional tests require a running Timeplus endpoint. Export env vars or use `tests/test.env`:
+  - `DBT_TEST_HOST` (default `localhost`)
+  - `DBT_TEST_PORT` (default `8463`)
+  - `DBT_TEST_USER` (default `default`)
+  - `DBT_TEST_PASSWORD` (default empty)
+  - `DBT_TEST_SCHEMA` (default `default`)
+- Run `pytest tests/functional` for functional tests.
+- Run `pytest tests/integration/timeplus.dbtspec` for integration tests.
 
 #### External sinks (Kafka / ClickHouse)
-- If you use the provided compose at `/home/haohang/kafka-timeplus-clickhouse/docker-compose.yml`, export required env vars first (examples below), then run `pytest -k external` to execute only those tests.
-```shell
-# ClickHouse
-export CH_ADDRESS=clickhouse:9440
-export CH_DATABASE=default
-export CH_TABLE=ch_sink_table
-export CH_USER=default
-export CH_PASSWORD=
-export CH_SECURE=false
-export CH_CA_CERT=
+- If you run Kafka/ClickHouse locally (e.g., via Docker Compose), set the relevant environment variables for your setup, then run `pytest -k external` to execute only those tests. See `tests/test.env.sample` for the full variable list.
 
-# Kafka
-export KAFKA_BROKERS=broker:9092
-export KAFKA_TOPIC=test_topic
-```
+Note: host:port values depend on your environment and are not enforced by the adapter. Use the ports your services expose.
+
+Typical defaults:
+- ClickHouse native: `9000` (plain), `9440` (TLS). HTTP: `8123/8443`.
+- Kafka brokers: `9092` (plain), others depending on your deployment.
 
 Tip: copy `tests/test.env.sample` to `tests/test.env` and edit for local runs (pytest-dotenv loads it automatically).
+
+### Compatibility
+
+- Python: 3.10, 3.11, 3.12
+- dbt-core: 1.10.x (pinned to `1.10.13`)
+- proton-driver: `>=0.2.13`
 
 ### Supported features
 
@@ -69,13 +72,29 @@ Tip: copy `tests/test.env.sample` to `tests/test.env` and edit for local runs (p
 The dbt model `database.schema.table` is not compatible with Timeplus because Timeplus does not support a `schema`.
 So we use a simple model `schema.table`, where `schema` is the Timeplus database.
 
+### Bounded vs streaming queries
+
+Timeplus streams are streaming by default. To avoid long-running queries in dbt models and tests, wrap streaming sources with `table(...)` when selecting, for example:
+
+```
+select window_end, cid, count() as cnt
+from tumble(table(car_live_data), 1s)
+group by window_end, cid
+```
+
+This produces a bounded snapshot for deterministic builds.
+
+### Cluster clause
+
+If you provide `cluster` in your profile credentials, DDL will automatically include `ON CLUSTER` clauses where supported (e.g., drop/rename, create stream) via built-in macros.
+
 ### Model Configuration
 
-| Option         | Description                                                                                                                                          | Required?                         |
-|----------------|------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------|
-| engine         | The table engine (type of stream) to use when creating tables                                                                                         | Optional (default: `Stream()`) |
-| order_by     | A tuple of column names or arbitrary expressions. This allows you to create a small sparse index that helps find data faster.                        | Optional (default: `tuple()`)     |
-| partition_by | A partition is a logical combination of records in a table by a specified criterion. The partition key can be any expression from the table columns. | Optional                          |
+| Option       | Description                                                                                                                                          | Default                                      |
+|--------------|------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------|
+| engine       | Stream engine used when creating streams                                                                                                             | `Stream(1, 1, rand())`                       |
+| order_by     | Column(s) or expression(s) used for ordering                                                                                                         | `to_start_of_hour(_tp_time)`                 |
+| partition_by | Partition expression for stream                                                                                                                      | `to_YYYYMMDD(_tp_time)`                      |
 
 ### Example Profile
 
@@ -101,3 +120,24 @@ your_profile_name:
       compress_block_size: [1048576] # default 1048576
       compression: ['lz4'] # default '' (disable)
 ```
+
+### Materialized views
+
+Create a materialized view that writes into a target stream and optionally applies settings:
+
+```
+{{ config(materialized='materialized_view', into='mv_target', settings='checkpoint_interval=5') }}
+select window_start as win_start, s, sum(i) as total
+from tumble(table(rd), 2s)
+group by window_start, s
+```
+
+### External sinks (Kafka / ClickHouse)
+
+The adapter includes tests/examples for Kafka and ClickHouse sinks. Export the environment variables shown above and run `pytest -k external` to execute only those tests.
+
+### Release and versioning
+
+- Package name: `dbt-timeplus` (renamed from `dbt-proton`).
+- Adapter version mirrors dbt minor (`1.10.*`).
+- The bundled macro package version in `dbt/include/timeplus/dbt_project.yml` is kept in sync as a convention.
