@@ -28,14 +28,6 @@
     {{ label }} id
   {%- endif %}
 {%- endmacro -%}
-
-{% macro on_cluster_clause(label) %}
-  {% set on_cluster = adapter.get_proton_cluster_name() %}
-  {%- if on_cluster is not none %}
-    {{ label }} {{ on_cluster }}
-  {%- endif %}
-{%- endmacro -%}
-
 {% macro timeplus__create_table_as(temporary, relation, sql) -%}
   {%- set sql_header = config.get('sql_header', none) -%}
 
@@ -58,7 +50,6 @@
       create stream if not exists {{ relation.include(database=False) }} (
         {{ col_defs | join(',\n        ') }}
       )
-      {{ on_cluster_clause(label="on cluster") }}
       {%- set eng = engine_value() -%}
       {%- if eng %}
       engine = {{ eng }}
@@ -81,7 +72,7 @@
 
   {{ sql_header if sql_header is not none }}
 
-  create view {{ relation.include(database=False) }} {{ on_cluster_clause(label="on cluster") }}
+  create view {{ relation.include(database=False) }}
   as (
     {{ sql }}
   )
@@ -98,7 +89,7 @@
   {#- Avoid unnecessary errors if using built-in 'default' database -#}
   {%- if relation.schema and relation.schema | lower != 'default' -%}
     {%- call statement('create_schema') -%}
-      create database if not exists {{ relation.without_identifier().include(database=False) }} {{ on_cluster_clause(label="on cluster") }}
+      create database if not exists {{ relation.without_identifier().include(database=False) }}
     {% endcall %}
   {%- endif -%}
 {% endmacro %}
@@ -107,7 +98,7 @@
   {#- Never drop the built-in 'default' database from tests -#}
   {%- if relation.schema and relation.schema | lower != 'default' -%}
     {%- call statement('drop_schema') -%}
-      drop database if exists {{ relation.without_identifier().include(database=False) }} cascade {{ on_cluster_clause(label="on cluster") }}
+      drop database if exists {{ relation.without_identifier().include(database=False) }} cascade
     {%- endcall -%}
   {%- endif -%}
 {% endmacro %}
@@ -144,16 +135,16 @@
 
 {% macro timeplus__drop_relation(relation) -%}
   {% call statement('drop_relation', auto_begin=False) -%}
-    drop stream if exists {{ relation }} {{ on_cluster_clause(label="on cluster") }}
+    drop stream if exists {{ relation }}
   {%- endcall %}
 {% endmacro %}
 
 {% macro timeplus__rename_relation(from_relation, to_relation) -%}
   {% call statement('drop_relation') %}
-    drop stream if exists {{ to_relation }} {{ on_cluster_clause(label="on cluster") }}
+    drop stream if exists {{ to_relation }}
   {% endcall %}
   {% call statement('rename_relation') %}
-    rename stream {{ from_relation }} to {{ to_relation }} {{ on_cluster_clause(label="on cluster") }}
+    rename stream {{ from_relation }} to {{ to_relation }}
   {% endcall %}
 {% endmacro %}
 
@@ -192,6 +183,6 @@
 
 {% macro timeplus__alter_column_type(relation, column_name, new_column_type) -%}
   {% call statement('alter_column_type') %}
-    alter stream {{ relation }} {{ on_cluster_clause(label="on cluster") }} modify column {{ adapter.quote(column_name) }} {{ new_column_type }}
+    alter stream {{ relation }} modify column {{ adapter.quote(column_name) }} {{ new_column_type }}
   {% endcall %}
 {% endmacro %}

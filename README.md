@@ -84,10 +84,6 @@ group by window_end, cid
 
 This produces a bounded snapshot for deterministic builds.
 
-### Cluster clause
-
-If you provide `cluster` in your profile credentials, DDL will automatically include `ON CLUSTER` clauses where supported (e.g., drop/rename, create stream) via built-in macros.
-
 ### Model Configuration
 
 | Option       | Description                                                                                                                                          | Default                                      |
