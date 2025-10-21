@@ -52,16 +52,16 @@ jobs:
         shell: bash
         run: |
           python - <<'PY'
-import os, socket, sys
-host = os.environ.get('DBT_TEST_HOST', 'localhost')
-port = int(os.environ.get('DBT_TEST_PORT', '8463'))
-s = socket.socket()
-s.settimeout(2.0)
-ok = s.connect_ex((host, port)) == 0
-print(f"probe: {host}:{port} => {'up' if ok else 'down'}")
-with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
-    fh.write(f"available={'true' if ok else 'false'}\n")
-PY
+          import os, socket, sys
+          host = os.environ.get('DBT_TEST_HOST', 'localhost')
+          port = int(os.environ.get('DBT_TEST_PORT', '8463'))
+          s = socket.socket()
+          s.settimeout(2.0)
+          ok = s.connect_ex((host, port)) == 0
+          print(f"probe: {host}:{port} => {'up' if ok else 'down'}")
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
+              fh.write(f"available={'true' if ok else 'false'}\n")
+          PY
       - name: Run functional tests (deterministic subset)
         if: steps.probe.outputs.available == 'true'
         run: |
@@ -105,12 +105,12 @@ PY
         id: probe_tp
         run: |
           python - <<'PY'
-import os, socket
-h=os.environ.get('DBT_TEST_HOST','localhost'); p=int(os.environ.get('DBT_TEST_PORT','8463'))
-s=socket.socket(); s.settimeout(2.0); ok = s.connect_ex((h,p)) == 0
-print(f"probe: {h}:{p} => {'up' if ok else 'down'}")
-open(os.environ['GITHUB_OUTPUT'],'a').write(f"available={'true' if ok else 'false'}\n")
-PY
+          import os, socket
+          h=os.environ.get('DBT_TEST_HOST','localhost'); p=int(os.environ.get('DBT_TEST_PORT','8463'))
+          s=socket.socket(); s.settimeout(2.0); ok = s.connect_ex((h,p)) == 0
+          print(f"probe: {h}:{p} => {'up' if ok else 'down'}")
+          open(os.environ['GITHUB_OUTPUT'],'a').write(f"available={'true' if ok else 'false'}\n")
+          PY
       - name: Run ClickHouse external test
         if: steps.probe_tp.outputs.available == 'true' && env.CH_ADDRESS != ''
         run: pytest -q tests/functional/test_external_clickhouse.py

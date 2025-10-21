@@ -107,7 +107,6 @@ your_profile_name:
       port: [port]  # default 8463
       user: [user]
       password: [abc123]
-      cluster: [cluster name]
       verify: [verify] # default False
       secure: [secure] # default False
       connect_timeout: [10] # default 10
